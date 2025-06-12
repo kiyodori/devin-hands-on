@@ -1,1 +1,20 @@
-
+{
+  "name": "weather-cli",
+  "version": "1.0.0",
+  "description": "Simple weather CLI tool with fixed sample data",
+  "main": "weather.js",
+  "type": "module",
+  "scripts": {
+    "start": "node weather.js",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+  },
+  "dependencies": {
+    "commander": "^11.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "keywords": ["weather", "cli", "node"],
+  "author": "",
+  "license": "MIT"
+}
