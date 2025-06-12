@@ -1,4 +1,4 @@
 export default {
-  testMatch: ['**/src/tests/**/*.test.js'],
+  testMatch: ['<rootDir>/tests/**/*.test.js'],
   transform: {}
 };
