@@ -1,4 +1,4 @@
-export function average(arr) {
+function average(arr) {
   if (arr.length === 0) return 0;
   // バグ：最後の要素を集計していない
   let sum = 0;
@@ -7,3 +7,5 @@ export function average(arr) {
   }
   return sum / arr.length;
 }
+
+module.exports = { average };
