@@ -3,8 +3,10 @@
  * This module provides functions for weather data processing
  */
 
+const axios = require('axios');
+
 /**
- * Get current weather information
+ * Get current weather information from wttr.in API
  * @param {string} location - Location to get weather for
  * @returns {Promise<Object>} Weather data object
  */
@@ -13,13 +15,40 @@ async function getCurrentWeather(location) {
     throw new Error('Location is required');
   }
   
-  return {
-    location: location,
-    temperature: 0,
-    condition: 'unknown',
-    humidity: 0,
-    timestamp: new Date().toISOString()
-  };
+  try {
+    const response = await axios.get(`https://wttr.in/${encodeURIComponent(location)}?format=j1`, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'weather-cli/1.0.0'
+      }
+    });
+    
+    const data = response.data;
+    const currentCondition = data.current_condition[0];
+    
+    return {
+      location: location,
+      temperature: parseInt(currentCondition.temp_C),
+      condition: currentCondition.weatherDesc[0].value,
+      humidity: parseInt(currentCondition.humidity),
+      feelsLike: parseInt(currentCondition.FeelsLikeC),
+      pressure: parseInt(currentCondition.pressure),
+      visibility: parseInt(currentCondition.visibility),
+      uvIndex: parseInt(currentCondition.uvIndex),
+      timestamp: new Date().toISOString(),
+      raw: data
+    };
+  } catch (error) {
+    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      throw new Error('Network error: Unable to connect to weather service');
+    } else if (error.response && error.response.status === 404) {
+      throw new Error(`Location not found: ${location}`);
+    } else if (error.code === 'ECONNABORTED') {
+      throw new Error('Request timeout: Weather service is not responding');
+    } else {
+      throw new Error(`Failed to fetch weather data: ${error.message}`);
+    }
+  }
 }
 
 /**

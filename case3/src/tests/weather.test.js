@@ -1,7 +1,15 @@
 const { getCurrentWeather, formatTemperature, isSevereWeather } = require('../utils/weather.js');
+const axios = require('axios');
+
+jest.mock('axios');
+const mockedAxios = axios;
 
 describe('Weather utility functions', () => {
   describe('getCurrentWeather', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
     test('should throw error when location is not provided', async () => {
       await expect(getCurrentWeather()).rejects.toThrow('Location is required');
       await expect(getCurrentWeather('')).rejects.toThrow('Location is required');
@@ -9,16 +17,96 @@ describe('Weather utility functions', () => {
     });
 
     test('should return weather object with valid location', async () => {
+      const mockResponse = {
+        data: {
+          current_condition: [{
+            temp_C: '25',
+            weatherDesc: [{ value: 'Partly cloudy' }],
+            humidity: '60',
+            FeelsLikeC: '27',
+            pressure: '1013',
+            visibility: '10',
+            uvIndex: '5'
+          }]
+        }
+      };
+      
+      mockedAxios.get.mockResolvedValue(mockResponse);
+      
       const result = await getCurrentWeather('Tokyo');
       
       expect(result).toHaveProperty('location', 'Tokyo');
-      expect(result).toHaveProperty('temperature');
-      expect(result).toHaveProperty('condition');
-      expect(result).toHaveProperty('humidity');
+      expect(result).toHaveProperty('temperature', 25);
+      expect(result).toHaveProperty('condition', 'Partly cloudy');
+      expect(result).toHaveProperty('humidity', 60);
+      expect(result).toHaveProperty('feelsLike', 27);
+      expect(result).toHaveProperty('pressure', 1013);
+      expect(result).toHaveProperty('visibility', 10);
+      expect(result).toHaveProperty('uvIndex', 5);
       expect(result).toHaveProperty('timestamp');
-      expect(typeof result.temperature).toBe('number');
-      expect(typeof result.condition).toBe('string');
-      expect(typeof result.humidity).toBe('number');
+      expect(result).toHaveProperty('raw');
+      expect(typeof result.timestamp).toBe('string');
+    });
+
+    test('should handle network errors', async () => {
+      const networkError = new Error('Network Error');
+      networkError.code = 'ENOTFOUND';
+      mockedAxios.get.mockRejectedValue(networkError);
+      
+      await expect(getCurrentWeather('Tokyo')).rejects.toThrow('Network error: Unable to connect to weather service');
+    });
+
+    test('should handle location not found errors', async () => {
+      const notFoundError = new Error('Not Found');
+      notFoundError.response = { status: 404 };
+      mockedAxios.get.mockRejectedValue(notFoundError);
+      
+      await expect(getCurrentWeather('InvalidCity')).rejects.toThrow('Location not found: InvalidCity');
+    });
+
+    test('should handle timeout errors', async () => {
+      const timeoutError = new Error('Timeout');
+      timeoutError.code = 'ECONNABORTED';
+      mockedAxios.get.mockRejectedValue(timeoutError);
+      
+      await expect(getCurrentWeather('Tokyo')).rejects.toThrow('Request timeout: Weather service is not responding');
+    });
+
+    test('should handle generic API errors', async () => {
+      const genericError = new Error('API Error');
+      mockedAxios.get.mockRejectedValue(genericError);
+      
+      await expect(getCurrentWeather('Tokyo')).rejects.toThrow('Failed to fetch weather data: API Error');
+    });
+
+    test('should properly encode location with special characters', async () => {
+      const mockResponse = {
+        data: {
+          current_condition: [{
+            temp_C: '20',
+            weatherDesc: [{ value: 'Clear' }],
+            humidity: '50',
+            FeelsLikeC: '22',
+            pressure: '1015',
+            visibility: '15',
+            uvIndex: '3'
+          }]
+        }
+      };
+      
+      mockedAxios.get.mockResolvedValue(mockResponse);
+      
+      await getCurrentWeather('São Paulo');
+      
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        'https://wttr.in/S%C3%A3o%20Paulo?format=j1',
+        expect.objectContaining({
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'weather-cli/1.0.0'
+          }
+        })
+      );
     });
   });
 
